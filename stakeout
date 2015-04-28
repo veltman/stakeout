@@ -3,12 +3,14 @@
 //Dependencies and argument details
 var fs = require("fs"),
     path = require("path"),
-    home = require("userhome"),
-    notifier = require("./lib/notifier.js"),
     _ = require("underscore"),
     program = require("commander"),
-    taskPath = home(".stakeout"),
+    notifier = require("./lib/notifier.js"),
+    taskPath = require("userhome")(".stakeout"),
     tasks;
+
+// Keeping env variables in .env for now
+require("dotenv").load();
 
 // Populate the existing task list
 try {
