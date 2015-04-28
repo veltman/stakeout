@@ -1,0 +1,232 @@
+#!/usr/bin/env node
+
+//Dependencies and argument details
+var fs = require("fs"),
+    path = require("path"),
+    home = require("userhome"),
+    notifier = require("./lib/notifier.js"),
+    _ = require("underscore"),
+    program = require("commander"),
+    taskPath = home(".stakeout"),
+    tasks;
+
+// Populate the existing task list
+try {
+  tasks = JSON.parse(fs.readFileSync(taskPath,{encoding:"utf8"}));
+} catch(e) {
+  tasks = {};
+}
+
+// Set up commands
+program.command("list")
+  .description("List existing stakeout tasks")
+  .action(list);
+
+program.command("create <task> [description]")
+  .description("Create a new stakeout/task, with an optional description")
+  .action(create);
+
+program.command("add <email/username> <task>")
+  .description("Add an email or slack channel/username to be notified for a task.")
+  .action(add);
+
+program.command("remove <email/username> <task>")
+  .description("Stop notifying an email or slack channel/username for a task.")
+  .action(remove);
+
+program.command("run <task>")
+  .description("Run a stakeout task once")
+  .action(run);
+
+// Catchall for unrecognized commands
+program.command("*")
+  .description("")
+  .action(function(){
+    program.help();
+  });
+
+program.parse(process.argv);
+
+// No arguments
+if (!program.args.length) {
+  program.help();
+}
+
+
+// Run the specified task
+function run(task) {
+
+  console.log(__dirname);
+
+  if (!tasks[task]) {
+    quit("Task " + task + " hasn't been created yet.");
+  }
+
+  /*try {
+    engine = require(path.join("../bots",task));
+  } catch(e) {
+    throw "Task " + task + " not found";
+    process.exit(1);
+  }*/
+
+  var firstRun = tasks[task].value === undefined;
+
+  /*
+  stakeout(task,engine);
+  */
+
+}
+
+// List all tasks
+function list() {
+
+  var entries = _.pairs(tasks).map(function(pair){
+
+    // Combined recipient list
+    var recipients = _.flatten(_.values(pair[1].notify));
+
+    var lines = [pair[0],pair[0].replace(/./g,"=")];
+
+    if (pair[1].description) {
+      lines.push(pair[1].description);
+    }
+
+    if (recipients.length) {
+      lines.push("Notifying: "+recipients.join(", "));
+    } else {
+      lines.push("No one is receiving notifications yet.");
+    }
+
+    return lines.join("\n");
+
+  });
+
+  if (!entries.length) {
+    console.log("No tasks found.");
+  } else {
+    console.log(entries.join("\n\n"));
+  }
+
+}
+
+// Create a new task
+function create(task,description) {
+
+  if (taskExists(task,true)) {
+    quit("Task " + task + " already exists.");
+  }
+
+  if (!task) {
+    program.help();
+  }
+
+  tasks[task] = {
+    notify: {
+      email: [],
+      slack: []
+    }
+  };
+
+  if (description) {
+    tasks[task].description = description;
+  }
+
+  saveTasks();
+
+}
+
+// Add a watcher to a task
+function add(watcher,task) {
+
+  if (!taskExists(task)) {
+    quit("Task " + task + " not found");
+  }
+
+  if (!watcher) {
+    program.help();
+  }
+
+  type = isSlack(watcher) ? "slack" : "email";
+
+  tasks[task].notify[type].push(watcher);
+  tasks[task].notify[type] = unique(tasks[task].notify[type]);
+
+  console.log("Added " + watcher + " to receive " + task + " notifications.");
+
+  saveTasks();
+
+}
+
+// Remove a watcher from a task
+function remove(watcher,task) {
+
+  if (!taskExists(task)) {
+    quit("Task " + task + " not found");
+  }
+
+  if (!watcher) {
+    program.help();
+  }
+
+  type = isSlack(watcher) ? "slack" : "email";
+
+  tasks[task].notify[type] = tasks[task].notify[type].filter(function(w){
+    return w.toLowerCase() !== watcher.toLowerCase();
+  });
+
+  console.log("Removed " + watcher + " from receiving " + task + " notifications.");
+
+  saveTasks();
+
+}
+
+// Save the task file back out
+function saveTasks() {
+
+  fs.writeFile(taskPath,JSON.stringify(tasks),function(err){
+    if (err) {
+      quit(err);
+    }
+  });
+
+}
+
+// Is it a Slack username or channel?
+function isSlack(watcher) {
+  return watcher.match(/^[@|#]/);
+}
+
+// Get case-insensitive unique array
+function unique(arr) {
+  return _.uniq(arr,function(d){
+    return d.toLowerCase();
+  });
+}
+
+// Check whether a task already exists
+function taskExists(task,caseInsensitive) {
+
+  if (!caseInsensitive) {
+
+    return tasks[task] !== undefined;
+
+  }
+
+  var lower = task.toLowerCase(),
+      found;
+
+  for (var key in tasks) {
+    if (key.toLowerCase() === lower) {
+      return true;
+    }
+  }
+
+  return false;
+
+}
+
+// Error out without a throw-style stack trace
+function quit(msg) {
+  console.warn(msg);
+  process.exit(1);
+}
