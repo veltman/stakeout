@@ -4,17 +4,17 @@
 var fs = require("fs"),
     path = require("path"),
     _ = require("underscore"),
+    mkdirp = require("mkdirp"),
     program = require("commander"),
     notifier = require("./lib/notifier.js"),
-    taskPath = require("userhome")(".stakeout"),
+    home = require("userhome"),
+    dotenv = require("dotenv"),
+    taskPath = home(".stakeout"),
     tasks;
-
-// Keeping env variables in .env for now
-require("dotenv").load();
 
 // Populate the existing task list
 try {
-  tasks = JSON.parse(fs.readFileSync(taskPath,{encoding:"utf8"}));
+  tasks = read(taskPath);
 } catch(e) {
   tasks = {};
 }
@@ -59,7 +59,8 @@ program.parse(process.argv);
 
 // No arguments
 if (!program.args.length) {
-  program.help();
+  //program.help();
+  quit();
 }
 
 // Run the specified task
@@ -292,6 +293,12 @@ function unique(arr) {
   });
 }
 
+
+// Because require() only works with .json extensions
+function read(filename) {
+  return JSON.parse(fs.readFileSync(filename,{encoding:"utf8"}));
+}
+
 // Check whether a task already exists
 function taskExists(task,caseInsensitive) {
 
@@ -316,6 +323,11 @@ function taskExists(task,caseInsensitive) {
 
 // Error out without a throw-style stack trace
 function quit(msg) {
-  console.warn(msg);
+
+  if (msg) {
+    console.warn(msg);
+  }
+
   process.exit(1);
+
 }
