@@ -20,6 +20,7 @@
     "commander": "^2.8.1",
     "dotenv": "^1.1.0",
     "mailgun": "^0.5.0",
+    "request": "^2.55.0",
     "underscore": "^1.8.3",
     "userhome": "^1.0.0"
   },
