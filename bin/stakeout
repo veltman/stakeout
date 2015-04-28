@@ -1,0 +1,120 @@
+#!/usr/bin/env node
+
+//Dependencies and argument details
+var fs = require("fs"),
+    path = require("path"),
+    stakeout = require("../"),
+    _ = require("underscore"),
+    program = require("commander"),
+    tasks;
+
+// Populate the existing task list
+try {
+  tasks = require("~/.stakeout");
+} catch(e) {
+  tasks = {};
+}
+
+program.command("list")
+  .description("List existing stakeout tasks")
+  .action(list);
+
+program.command("create <task>")
+  .description("Create a new stakeout/task"))
+  .action(create);
+
+program.command("add <email/slack> <task>")
+  .description("Add an email or slack channel/username to be notified for a task.")
+  .action(add);
+
+program.command("remove <email/slack> <task>")
+  .description("Stop notifying an email or slack channel/username for a task.")
+  .action(remove);
+
+program.command("run <task>")
+  .description("Run a stakeout task once")
+  .action(run);
+
+program.parse(process.argv);
+
+function run(task) {
+
+  /*
+  console.log("would run");
+  var engine;
+
+  try {
+    engine = require(path.join("../bots",task));
+  } catch(e) {
+    throw "Task " + task + " not found";
+    process.exit(1);
+  }
+
+  stakeout(task,engine);
+  */
+
+}
+
+function list() {
+
+  var entries = _.pairs(tasks).map(function(pair){
+
+    // Combined recipient list
+    var recipients = _.flatten(_.values(pair[1].notify));
+
+    return pair[0] + ": " + recipients.length ? recipients.join(", ") : "No recipients";
+
+  });
+
+  console.log(entries.join("\n"));
+
+}
+
+function add(person,task) {
+
+  if (tasks[task] === undefined) {
+    throw "Task " + task + " not found");
+  }
+
+  type = isSlack(person) ? "slack" : "email";
+
+  tasks[task].notify[type].push(person);
+  tasks[task].notify[type] = unique(tasks[task].notify[type]);
+
+  console.log(tasks);
+
+  fs.writeFile("~/.stakeout",JSON.stringify(tasks),function(err){
+    err && throw err;
+  });
+
+}
+
+function remove(person,task) {
+
+  if (tasks[task] === undefined) {
+    throw "Task " + task + " not found");
+  }
+
+  type = isSlack(person) ? "slack" : "email";
+
+  tasks[task].notify[type] = tasks[task].notify[type].filter(function(p){
+    return p.toLowerCase() !== person.toLowerCase();
+  });
+
+  console.log(tasks);
+
+  fs.writeFile("~/.stakeout",JSON.stringify(tasks),function(err){
+    err && throw err;
+  });
+
+}
+
+function isSlack(person) {
+  return person.match(/^[@|#]/);
+}
+
+function unique(arr) {
+  return _.uniq(arr,function(d){
+    return d.toLowerCase();
+  });
+}

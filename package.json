@@ -1,0 +1,29 @@
+{
+  "name": "stakeout",
+  "version": "1.0.0",
+  "description": "For watching a set of URLs and notifying someone when something has changed.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/veltman/stakeout"
+  },
+  "author": "Noah Veltman (@veltman)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/veltman/stakeout/issues"
+  },
+  "homepage": "https://github.com/veltman/stakeout",
+  "dependencies": {
+    "commander": "^2.8.1",
+    "mailgun": "^0.5.0",
+    "request": "^2.55.0",
+    "underscore": "^1.8.3"
+  },
+  "preferGlobal": true,
+  "bin": {
+    "stakeout": "./bin/stakeout"
+  }
+}
