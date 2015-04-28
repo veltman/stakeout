@@ -6,16 +6,20 @@ var fs = require("fs"),
     _ = require("underscore"),
     mkdirp = require("mkdirp"),
     program = require("commander"),
+    yaml = require("js-yaml"),
     notifier = require("./lib/notifier.js"),
     home = require("userhome"),
-    taskPath = home(".stakeout"),
-    tasks;
+    stakeoutDir = home(".stakeout"),
+    config;
+
+mkdirp.sync(stakeoutDir);
 
 // Populate the existing task list
+// TODO: make this YAML instead
 try {
-  tasks = read(taskPath);
+  config = read(path.join(stakeoutDir,"config"));
 } catch(e) {
-  tasks = {};
+  config = {};
 }
 
 // Set up commands
@@ -23,8 +27,10 @@ program.command("list")
   .description("List existing stakeout tasks")
   .action(list);
 
-program.command("add <task> [description]")
+program.command("add <task>")
   .description("Create a new stakeout/task, with an optional description.  The task name should only use alphanumeric characters, dashes, and underscores.")
+  .option("-p, --path <path>", "path to module folder")
+  .option("-d, --description <description>", "task description")
   .action(add);
 
 program.command("watch <task> <email/username>")
@@ -35,7 +41,7 @@ program.command("remove <task>")
   .description("Remove a task from stakeout.")
   .action(remove);
 
-program.command("unwatch <task>  <email/username>")
+program.command("unwatch <task> <email/username>")
   .description("Stop notifying an email or slack channel/username for a task.")
   .action(unwatch);
 
@@ -65,26 +71,33 @@ if (!program.args.length) {
 // Run the specified task
 function run(task) {
 
-  var engine;
+  var engine,
+      current,
+      firstRun;
 
-  if (!tasks[task]) {
+  if (!config[task]) {
     quit("Task " + task + " hasn't been created yet.");
   }
 
   // Require the module for this bot
   try {
-    engine = require(path.join(__dirname,"bots",task));
+    engine = require(config[task].path);
   } catch(e) {
-    quit(path.join("bots",task) + " module not found.");
+    quit(config[task].path + " module not found.");
   }
 
   // Get the current value
-  var currentValue = tasks[task].value,
-      firstRun = (currentValue === undefined);
+  try {
+    current = require(path.join(stakeoutDir,task + ".json"));
+  } catch(e) {
+
+  }
+
+  firstRun = (current === undefined);
 
   // Run the comparison, callback will include the new value to save
   // and a notification message, if one exists
-  engine(currentValue,function(err,newValue,notification) {
+  engine(current,function(err,newValue,notification) {
 
     console.log(notification);
 
@@ -92,9 +105,7 @@ function run(task) {
       quit(err);
     }
 
-    tasks[task].value = newValue;
-
-    saveTasks();
+    saveValue(task,newValue);
 
     // Don't notify on the first run
     if (notification && !firstRun) {
@@ -102,27 +113,27 @@ function run(task) {
       console.log(notification);
 
       // Send Slack notifications
-      tasks[task].notify.slack.forEach(function(channel){
+      config[task].notify.slack.forEach(function(channel){
 
         console.log("Slacking " + channel);
 
         notifier.slack({
           channel: channel,
           text: notification
-        });
+        },config.SLACK_TOKEN);
 
       });
 
       // Send emails
-      if (tasks[task].notify.email.length) {
+      if (config[task].notify.email.length) {
 
-        console.log("Emailing ",tasks[task].notify.email);
+        console.log("Emailing ",config[task].notify.email);
 
         notifier.email({
-          to: tasks[task].notify.email,
+          to: config[task].notify.email,
           subject: "Data News Bot notification for " + task,
           body: notification
-        });
+        },config.MAILGUN_API_KEY);
 
       }
 
@@ -135,7 +146,7 @@ function run(task) {
 // List all tasks
 function list() {
 
-  var entries = _.pairs(tasks).map(function(pair){
+  var entries = _.pairs(config).map(function(pair){
 
     // Combined recipient list
     var recipients = _.flatten(_.values(pair[1].notify));
@@ -165,7 +176,8 @@ function list() {
 }
 
 // Create a new task
-function add(task,description) {
+function add(task,options) {
+
 
   if (taskExists(task,true)) {
     quit("Task " + task + " already exists.");
@@ -175,18 +187,23 @@ function add(task,description) {
     program.help();
   }
 
-  tasks[task] = {
+  if (!options.path) {
+    quit("The --path option is required when adding a new task");
+  }
+
+  config[task] = {
     notify: {
       email: [],
       slack: []
-    }
+    },
+    path: path.resolve(options.path)
   };
 
-  if (description) {
-    tasks[task].description = description;
+  if (options.description && typeof options.description === "string") {
+    config[task].description = options.description;
   }
 
-  saveTasks("Created new task: " + task);
+  saveConfig("Created new task: " + task);
 
 }
 
@@ -197,13 +214,15 @@ function remove(task) {
     quit("Task " + task + " not found.");
   }
 
-  delete tasks[task];
+  delete config[task];
 
-  saveTasks("Removed task: " + task);
+  //TODO: also delete the log file
+
+  saveConfig("Removed task: " + task);
 
 }
 
-// Remove a task
+// Rename a task
 function rename(oldTask,newTask) {
 
   if (!taskExists(oldTask)) {
@@ -214,11 +233,13 @@ function rename(oldTask,newTask) {
     quit("Task " + newTask + " already exists.");
   }
 
-  tasks[newTask] = tasks[oldTask];
+  config[newTask] = config[oldTask];
 
-  delete tasks[oldTask];
+  delete config[oldTask];
 
-  saveTasks("Renamed " + oldTask + " to " + newTask);
+  //TODO: also move the log file
+
+  saveConfig("Renamed " + oldTask + " to " + newTask);
 
 }
 
@@ -236,10 +257,10 @@ function watch(task,watcher) {
 
   type = isSlack(watcher) ? "slack" : "email";
 
-  tasks[task].notify[type].push(watcher);
-  tasks[task].notify[type] = unique(tasks[task].notify[type]);
+  config[task].notify[type].push(watcher);
+  config[task].notify[type] = unique(config[task].notify[type]);
 
-  saveTasks("Added " + watcher + " to receive " + task + " notifications.");
+  saveConfig("Added " + watcher + " to receive " + task + " notifications.");
 
 }
 
@@ -256,11 +277,11 @@ function unwatch(task,watcher) {
 
   type = isSlack(watcher) ? "slack" : "email";
 
-  tasks[task].notify[type] = tasks[task].notify[type].filter(function(w){
+  config[task].notify[type] = config[task].notify[type].filter(function(w){
     return w.toLowerCase() !== watcher.toLowerCase();
   });
 
-  saveTasks("Removed " + watcher + " from receiving " + task + " notifications.");
+  saveConfig("Removed " + watcher + " from receiving " + task + " notifications.");
 
 }
 
@@ -268,16 +289,29 @@ function unwatch(task,watcher) {
 // doing this sync in case there are multiple tasks running at once
 // probably a bad idea. TODO: fix this
 // log a message on success
-function saveTasks(msg) {
+function saveConfig(msg) {
+
+
+  console.log(config);
 
   try {
-    fs.writeFileSync(taskPath,JSON.stringify(tasks));
+    fs.writeFileSync(path.join(stakeoutDir,"config"),yaml.safeDump(config));
   } catch (e) {
     quit(e);
   }
 
   if (msg) {
     console.log(msg);
+  }
+
+}
+
+function saveValue(task,val) {
+
+  try {
+    fs.writeFileSync(path.join(stakeoutDir,task + ".json"),JSON.stringify(val));
+  } catch (e) {
+    quit(e);
   }
 
 }
@@ -295,9 +329,9 @@ function unique(arr) {
 }
 
 
-// Because require() only works with .json extensions
+// Load yaml config
 function read(filename) {
-  return JSON.parse(fs.readFileSync(filename,{encoding:"utf8"}));
+  return yaml.safeLoad(fs.readFileSync(filename,{encoding:"utf8"}));
 }
 
 // Check whether a task already exists
@@ -305,14 +339,14 @@ function taskExists(task,caseInsensitive) {
 
   if (!caseInsensitive) {
 
-    return tasks[task] !== undefined;
+    return config[task] !== undefined;
 
   }
 
   var lower = task.toLowerCase(),
       found;
 
-  for (var key in tasks) {
+  for (var key in config) {
     if (key.toLowerCase() === lower) {
       return true;
     }
