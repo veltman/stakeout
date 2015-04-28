@@ -8,7 +8,6 @@ var fs = require("fs"),
     program = require("commander"),
     notifier = require("./lib/notifier.js"),
     home = require("userhome"),
-    dotenv = require("dotenv"),
     taskPath = home(".stakeout"),
     tasks;
 
