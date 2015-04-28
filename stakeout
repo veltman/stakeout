@@ -86,6 +86,8 @@ function run(task) {
   // and a notification message, if one exists
   engine(currentValue,function(err,newValue,notification) {
 
+    console.log(notification);
+
     if (err) {
       quit(err);
     }
