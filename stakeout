@@ -22,17 +22,25 @@ program.command("list")
   .description("List existing stakeout tasks")
   .action(list);
 
-program.command("create <task> [description]")
-  .description("Create a new stakeout/task, with an optional description")
-  .action(create);
-
-program.command("add <email/username> <task>")
-  .description("Add an email or slack channel/username to be notified for a task.")
+program.command("add <task> [description]")
+  .description("Create a new stakeout/task, with an optional description.  The task name should only use alphanumeric characters, dashes, and underscores.")
   .action(add);
 
-program.command("remove <email/username> <task>")
-  .description("Stop notifying an email or slack channel/username for a task.")
+program.command("watch <task> <email/username>")
+  .description("Add an email or slack channel/username to be notified for a task.")
+  .action(watch);
+
+program.command("remove <task>")
+  .description("Remove a task from stakeout.")
   .action(remove);
+
+program.command("unwatch <task>  <email/username>")
+  .description("Stop notifying an email or slack channel/username for a task.")
+  .action(unwatch);
+
+program.command("rename <old task name> <new task name>")
+  .description("Rename a task.")
+  .action(rename);
 
 program.command("run <task>")
   .description("Run a stakeout task once")
@@ -52,28 +60,71 @@ if (!program.args.length) {
   program.help();
 }
 
-
 // Run the specified task
 function run(task) {
 
-  console.log(__dirname);
+  var engine;
 
   if (!tasks[task]) {
     quit("Task " + task + " hasn't been created yet.");
   }
 
-  /*try {
-    engine = require(path.join("../bots",task));
+  // Require the module for this bot
+  try {
+    engine = require(path.join(__dirname,"bots",task));
   } catch(e) {
-    throw "Task " + task + " not found";
-    process.exit(1);
-  }*/
+    quit(path.join("bots",task) + " module not found.");
+  }
 
-  var firstRun = tasks[task].value === undefined;
+  // Get the current value
+  var currentValue = tasks[task].value,
+      firstRun = (currentValue === undefined);
 
-  /*
-  stakeout(task,engine);
-  */
+  // Run the comparison, callback will include the new value to save
+  // and a notification message, if one exists
+  engine(currentValue,function(err,newValue,notification) {
+
+    if (err) {
+      quit(err);
+    }
+
+    tasks[task].value = newValue;
+
+    saveTasks();
+
+    // Don't notify on the first run
+    if (notification && !firstRun) {
+
+      console.log(notification);
+
+      // Send Slack notifications
+      tasks[task].notify.slack.forEach(function(channel){
+
+        console.log("Slacking " + channel);
+
+        notifier.slack({
+          channel: channel,
+          text: notification
+        });
+
+      });
+
+      // Send emails
+      if (tasks[task].notify.email.length) {
+
+        console.log("Emailing ",tasks[task].notify.email);
+
+        notifier.email({
+          to: tasks[task].notify.email,
+          subject: "Data News Bot notification for " + task,
+          body: notification
+        });
+
+      }
+
+    }
+
+  });
 
 }
 
@@ -104,13 +155,13 @@ function list() {
   if (!entries.length) {
     console.log("No tasks found.");
   } else {
-    console.log(entries.join("\n\n"));
+    console.log("\n" + entries.join("\n\n") + "\n");
   }
 
 }
 
 // Create a new task
-function create(task,description) {
+function add(task,description) {
 
   if (taskExists(task,true)) {
     quit("Task " + task + " already exists.");
@@ -131,12 +182,45 @@ function create(task,description) {
     tasks[task].description = description;
   }
 
-  saveTasks();
+  saveTasks("Created new task: " + task);
 
 }
 
+// Remove a task
+function remove(task) {
+
+  if (!taskExists(task)) {
+    quit("Task " + task + " not found.");
+  }
+
+  delete tasks[task];
+
+  saveTasks("Removed task: " + task);
+
+}
+
+// Remove a task
+function rename(oldTask,newTask) {
+
+  if (!taskExists(oldTask)) {
+    quit("Task " + oldTask + " not found.");
+  }
+
+  if (taskExists(newTask,true)) {
+    quit("Task " + newTask + " already exists.");
+  }
+
+  tasks[newTask] = tasks[oldTask];
+
+  delete tasks[oldTask];
+
+  saveTasks("Renamed " + oldTask + " to " + newTask);
+
+}
+
+
 // Add a watcher to a task
-function add(watcher,task) {
+function watch(task,watcher) {
 
   if (!taskExists(task)) {
     quit("Task " + task + " not found");
@@ -151,14 +235,12 @@ function add(watcher,task) {
   tasks[task].notify[type].push(watcher);
   tasks[task].notify[type] = unique(tasks[task].notify[type]);
 
-  console.log("Added " + watcher + " to receive " + task + " notifications.");
-
-  saveTasks();
+  saveTasks("Added " + watcher + " to receive " + task + " notifications.");
 
 }
 
 // Remove a watcher from a task
-function remove(watcher,task) {
+function unwatch(task,watcher) {
 
   if (!taskExists(task)) {
     quit("Task " + task + " not found");
@@ -174,20 +256,25 @@ function remove(watcher,task) {
     return w.toLowerCase() !== watcher.toLowerCase();
   });
 
-  console.log("Removed " + watcher + " from receiving " + task + " notifications.");
-
-  saveTasks();
+  saveTasks("Removed " + watcher + " from receiving " + task + " notifications.");
 
 }
 
 // Save the task file back out
-function saveTasks() {
+// doing this sync in case there are multiple tasks running at once
+// probably a bad idea. TODO: fix this
+// log a message on success
+function saveTasks(msg) {
 
-  fs.writeFile(taskPath,JSON.stringify(tasks),function(err){
-    if (err) {
-      quit(err);
-    }
-  });
+  try {
+    fs.writeFileSync(taskPath,JSON.stringify(tasks));
+  } catch (e) {
+    quit(e);
+  }
+
+  if (msg) {
+    console.log(msg);
+  }
 
 }
 
