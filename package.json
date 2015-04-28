@@ -2,7 +2,7 @@
   "name": "stakeout",
   "version": "1.0.0",
   "description": "For watching a set of URLs and notifying someone when something has changed.",
-  "main": "index.js",
+  "main": "stakeout",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -25,6 +25,6 @@
   },
   "preferGlobal": true,
   "bin": {
-    "stakeout": "./bin/stakeout"
+    "stakeout": "./stakeout"
   }
 }
