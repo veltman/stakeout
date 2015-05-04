@@ -17,7 +17,7 @@ mkdirp.sync(stakeoutDir);
 // Populate the existing task list
 // TODO: make this YAML instead
 try {
-  config = read(path.join(stakeoutDir,"config"));
+  config = readYAML(path.join(stakeoutDir,"config"));
 } catch(e) {
   config = {};
 }
@@ -88,9 +88,9 @@ function run(task) {
 
   // Get the current value
   try {
-    current = require(path.join(stakeoutDir,task + ".json"));
+    current = readJSON(path.join(stakeoutDir,task + ".json"));
   } catch(e) {
-
+    // current run data doesn't exist
   }
 
   firstRun = (current === undefined);
@@ -98,8 +98,6 @@ function run(task) {
   // Run the comparison, callback will include the new value to save
   // and a notification message, if one exists
   engine(current,function(err,newValue,notification) {
-
-    console.log(notification);
 
     if (err) {
       quit(err);
@@ -110,30 +108,24 @@ function run(task) {
     // Don't notify on the first run
     if (notification && !firstRun) {
 
-      console.log(notification);
-
       // Send Slack notifications
       config[task].notify.slack.forEach(function(channel){
-
-        console.log("Slacking " + channel);
 
         notifier.slack({
           channel: channel,
           text: notification
-        },config.SLACK_TOKEN);
+        },config.SLACK_TOKEN || process.env.SLACK_TOKEN);
 
       });
 
       // Send emails
       if (config[task].notify.email.length) {
 
-        console.log("Emailing ",config[task].notify.email);
-
         notifier.email({
           to: config[task].notify.email,
           subject: "Data News Bot notification for " + task,
           body: notification
-        },config.MAILGUN_API_KEY);
+        },config.MAILGUN_API_KEY || process.env.MAILGUN_API_KEY);
 
       }
 
@@ -217,6 +209,7 @@ function remove(task) {
   delete config[task];
 
   //TODO: also delete the log file
+  fs.unlinkSync(path.join(stakeoutDir,task+".json"));
 
   saveConfig("Removed task: " + task);
 
@@ -237,7 +230,8 @@ function rename(oldTask,newTask) {
 
   delete config[oldTask];
 
-  //TODO: also move the log file
+  // Move the logfile too
+  fs.renameSync(path.join(stakeoutDir,oldTask+".json"),path.join(stakeoutDir,newTask+".json"));
 
   saveConfig("Renamed " + oldTask + " to " + newTask);
 
@@ -291,11 +285,10 @@ function unwatch(task,watcher) {
 // log a message on success
 function saveConfig(msg) {
 
-
   console.log(config);
 
   try {
-    fs.writeFileSync(path.join(stakeoutDir,"config"),yaml.safeDump(config));
+    writeYAML(path.join(stakeoutDir,"config"),config);
   } catch (e) {
     quit(e);
   }
@@ -309,7 +302,7 @@ function saveConfig(msg) {
 function saveValue(task,val) {
 
   try {
-    fs.writeFileSync(path.join(stakeoutDir,task + ".json"),JSON.stringify(val));
+    writeJSON(path.join(stakeoutDir,task + ".json"),val);
   } catch (e) {
     quit(e);
   }
@@ -329,9 +322,25 @@ function unique(arr) {
 }
 
 
+function writeYAML(filename,data) {
+  fs.writeFileSync(filename,yaml.safeDump(data));
+}
+
+function writeJSON(filename,data) {
+  fs.writeFileSync(filename,JSON.stringify(data));
+}
+
 // Load yaml config
+function readYAML(filename) {
+  return yaml.safeLoad(read(filename));
+}
+
+function readJSON(filename) {
+  return JSON.parse(read(filename));
+}
+
 function read(filename) {
-  return yaml.safeLoad(fs.readFileSync(filename,{encoding:"utf8"}));
+  return fs.readFileSync(filename,{encoding:"utf8"});
 }
 
 // Check whether a task already exists
