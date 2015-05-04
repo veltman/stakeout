@@ -53,6 +53,10 @@ program.command("run <task>")
   .description("Run a stakeout task once")
   .action(run);
 
+program.command("runall")
+  .description("Run all stakeout tasks")
+  .action(runall);
+
 // Catchall for unrecognized commands
 program.command("*")
   .description("")
@@ -68,6 +72,10 @@ if (!program.args.length) {
   quit();
 }
 
+function runall() {
+
+}
+
 // Run the specified task
 function run(task) {
 
@@ -75,15 +83,15 @@ function run(task) {
       current,
       firstRun;
 
-  if (!config[task]) {
+  if (!config.tasks[task]) {
     quit("Task " + task + " hasn't been created yet.");
   }
 
   // Require the module for this bot
   try {
-    engine = require(config[task].path);
+    engine = require(config.tasks[task].path);
   } catch(e) {
-    quit(config[task].path + " module not found.");
+    quit(config.tasks[task].path + " module not found.");
   }
 
   // Get the current value
@@ -109,7 +117,7 @@ function run(task) {
     if (notification && !firstRun) {
 
       // Send Slack notifications
-      config[task].notify.slack.forEach(function(channel){
+      config.tasks[task].notify.slack.forEach(function(channel){
 
         notifier.slack({
           channel: channel,
@@ -119,10 +127,10 @@ function run(task) {
       });
 
       // Send emails
-      if (config[task].notify.email.length) {
+      if (config.tasks[task].notify.email.length) {
 
         notifier.email({
-          to: config[task].notify.email,
+          to: config.tasks[task].notify.email,
           subject: "Data News Bot notification for " + task,
           body: notification
         },config.MAILGUN_API_KEY || process.env.MAILGUN_API_KEY);
@@ -138,7 +146,7 @@ function run(task) {
 // List all tasks
 function list() {
 
-  var entries = _.pairs(config).map(function(pair){
+  var entries = _.pairs(config.tasks).map(function(pair){
 
     // Combined recipient list
     var recipients = _.flatten(_.values(pair[1].notify));
@@ -183,7 +191,7 @@ function add(task,options) {
     quit("The --path option is required when adding a new task");
   }
 
-  config[task] = {
+  config.tasks[task] = {
     notify: {
       email: [],
       slack: []
@@ -192,7 +200,7 @@ function add(task,options) {
   };
 
   if (options.description && typeof options.description === "string") {
-    config[task].description = options.description;
+    config.tasks[task].description = options.description;
   }
 
   saveConfig("Created new task: " + task);
@@ -206,10 +214,16 @@ function remove(task) {
     quit("Task " + task + " not found.");
   }
 
-  delete config[task];
+  delete config.tasks[task];
 
   //TODO: also delete the log file
-  fs.unlinkSync(path.join(stakeoutDir,task+".json"));
+  try {
+    fs.unlinkSync(path.join(stakeoutDir,task+".json"));
+  } catch (e) {
+    if (e.code !== "ENOENT") {
+      quit(e);
+    }
+  }
 
   saveConfig("Removed task: " + task);
 
@@ -226,12 +240,18 @@ function rename(oldTask,newTask) {
     quit("Task " + newTask + " already exists.");
   }
 
-  config[newTask] = config[oldTask];
+  config.tasks[newTask] = config.tasks[oldTask];
 
-  delete config[oldTask];
+  delete config.tasks[oldTask];
 
   // Move the logfile too
-  fs.renameSync(path.join(stakeoutDir,oldTask+".json"),path.join(stakeoutDir,newTask+".json"));
+  try {
+    fs.renameSync(path.join(stakeoutDir,oldTask+".json"),path.join(stakeoutDir,newTask+".json"));
+  } catch (e) {
+    if (e.code !== "ENOENT") {
+      quit(e);
+    }
+  }
 
   saveConfig("Renamed " + oldTask + " to " + newTask);
 
@@ -251,8 +271,8 @@ function watch(task,watcher) {
 
   type = isSlack(watcher) ? "slack" : "email";
 
-  config[task].notify[type].push(watcher);
-  config[task].notify[type] = unique(config[task].notify[type]);
+  config.tasks[task].notify[type].push(watcher);
+  config.tasks[task].notify[type] = unique(config.tasks[task].notify[type]);
 
   saveConfig("Added " + watcher + " to receive " + task + " notifications.");
 
@@ -271,7 +291,7 @@ function unwatch(task,watcher) {
 
   type = isSlack(watcher) ? "slack" : "email";
 
-  config[task].notify[type] = config[task].notify[type].filter(function(w){
+  config.tasks[task].notify[type] = config.tasks[task].notify[type].filter(function(w){
     return w.toLowerCase() !== watcher.toLowerCase();
   });
 
@@ -348,14 +368,14 @@ function taskExists(task,caseInsensitive) {
 
   if (!caseInsensitive) {
 
-    return config[task] !== undefined;
+    return config.tasks[task] !== undefined;
 
   }
 
   var lower = task.toLowerCase(),
       found;
 
-  for (var key in config) {
+  for (var key in config.tasks) {
     if (key.toLowerCase() === lower) {
       return true;
     }
