@@ -19,7 +19,9 @@ mkdirp.sync(stakeoutDir);
 try {
   config = readYAML(path.join(stakeoutDir,"config"));
 } catch(e) {
-  config = {};
+  config = {
+    tasks: {}
+  };
 }
 
 // Set up commands
@@ -73,6 +75,10 @@ if (!program.args.length) {
 }
 
 function runall() {
+
+  for (task in config.tasks) {
+    run(task);
+  }
 
 }
 
