@@ -216,8 +216,6 @@ function doConfig() {
       }
     })
 
-    console.log(config);
-
     saveConfig("Configuration updated.");
 
   });
