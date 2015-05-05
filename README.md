@@ -158,5 +158,7 @@ These sorts of "watch to see if a certain thing has happened/changed" bots can c
 
 * Make this handle the scheduling instead of requiring separate cronjobs per task
 * Make the defaults in `notifier.js` configurable
+* Add a `stakeout config` option
+* Maybe queue the tasks with `runall` so that they don't step on each other
 * Rewrite these docs more thoroughly
 * Include some example bots
