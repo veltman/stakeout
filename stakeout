@@ -311,8 +311,6 @@ function unwatch(task,watcher) {
 // log a message on success
 function saveConfig(msg) {
 
-  console.log(config);
-
   try {
     writeYAML(path.join(stakeoutDir,"config"),config);
   } catch (e) {
