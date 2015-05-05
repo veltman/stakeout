@@ -1,6 +1,6 @@
 {
   "name": "stakeout",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "For watching a set of URLs and notifying someone when something has changed.",
   "main": "stakeout",
   "scripts": {
@@ -21,6 +21,7 @@
     "js-yaml": "^3.3.0",
     "mailgun": "^0.5.0",
     "mkdirp": "^0.5.0",
+    "prompt": "^0.2.14",
     "request": "^2.55.0",
     "underscore": "^1.8.3",
     "userhome": "^1.0.0"

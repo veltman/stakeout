@@ -9,10 +9,24 @@ var fs = require("fs"),
     yaml = require("js-yaml"),
     notifier = require("./lib/notifier.js"),
     home = require("userhome"),
+    prompt = require("prompt"),
     stakeoutDir = home(".stakeout"),
+    configurable = [
+    {
+      name: "SLACK_TOKEN",
+      message: "Enter your Slack webhook token:"
+    },
+    {
+      name: "MAILGUN_API_KEY",
+      message: "Enter your Mailgun API key:"
+    }],
     config;
 
 mkdirp.sync(stakeoutDir);
+
+// Hide the "prompt: " that's on by default
+prompt.message = "";
+prompt.delimiter = "";
 
 // Populate the existing task list
 // TODO: make this YAML instead
@@ -28,6 +42,10 @@ try {
 program.command("list")
   .description("List existing stakeout tasks")
   .action(list);
+
+program.command("config")
+  .description("Set required variables for email/Slack integration.")
+  .action(doConfig);
 
 program.command("add <task>")
   .description("Create a new stakeout/task, with an optional description.  The task name should only use alphanumeric characters, dashes, and underscores.")
@@ -178,6 +196,31 @@ function list() {
   } else {
     console.log("\n" + entries.join("\n\n") + "\n");
   }
+
+}
+
+function doConfig() {
+
+  prompt.start();
+  prompt.get(configurable,function(err,results){
+
+    if (err) {
+      quit(err);
+    }
+
+    configurable.forEach(function(option){
+      if (results[option.name]) {
+        config[option.name] = results[option.name];
+      } else {
+        delete config[option.name];
+      }
+    })
+
+    console.log(config);
+
+    saveConfig("Configuration updated.");
+
+  });
 
 }
 
