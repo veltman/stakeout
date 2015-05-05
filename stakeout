@@ -119,11 +119,7 @@ function run(task) {
       quit(err);
     }
 
-    console.log("NEW VALUE");
-    console.log(newValue);
-    console.log("NOTIFICATION");
-    console.log(notification);
-
+    console.log("DEEP EQUAL",_.isEqual(current,newValue));
     // If the values are deep equal, don't resave or notify
     if (!_.isEqual(current,newValue)) {
 
@@ -131,6 +127,8 @@ function run(task) {
 
       // Don't notify on the first run
       if (notification && !firstRun) {
+
+        console.log("SENDING",notification);
 
         // Send Slack notifications
         config.tasks[task].notify.slack.forEach(function(channel){
