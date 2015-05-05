@@ -416,7 +416,7 @@ function writeYAML(filename,data) {
 }
 
 function writeJSON(filename,data) {
-  fs.writeFileSync(filename,JSON.stringify(data));
+  fs.writeFileSync(filename,JSON.stringify(data,null,"  "));
 }
 
 // Load yaml config
