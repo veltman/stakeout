@@ -306,43 +306,67 @@ function rename(oldTask,newTask) {
 
 
 // Add a watcher to a task
-function watch(task,watcher) {
+function watch(task,watchers) {
 
   if (!taskExists(task)) {
     quit("Task " + task + " not found");
   }
 
-  if (!watcher) {
+  if (!watchers) {
     program.help();
   }
 
-  type = isSlack(watcher) ? "slack" : "email";
+  watchers = watchers.split(",");
 
-  config.tasks[task].notify[type].push(watcher);
-  config.tasks[task].notify[type] = unique(config.tasks[task].notify[type]);
+  watchers.forEach(function(watcher){
 
-  saveConfig("Added " + watcher + " to receive " + task + " notifications.");
+    watcher = watcher.trim();
+
+    if (!watcher) {
+      return true;
+    }
+
+    var type = isSlack(watcher) ? "slack" : "email";
+
+    config.tasks[task].notify[type].push(watcher);
+    config.tasks[task].notify[type] = unique(config.tasks[task].notify[type]);
+
+  });
+
+  saveConfig("Added " + watchers.join(", ") + " to receive " + task + " notifications.");
 
 }
 
 // Remove a watcher from a task
-function unwatch(task,watcher) {
+function unwatch(task,watchers) {
 
   if (!taskExists(task)) {
     quit("Task " + task + " not found");
   }
 
-  if (!watcher) {
+  if (!watchers) {
     program.help();
   }
 
-  type = isSlack(watcher) ? "slack" : "email";
+  watchers = watchers.split(",");
 
-  config.tasks[task].notify[type] = config.tasks[task].notify[type].filter(function(w){
-    return w.toLowerCase() !== watcher.toLowerCase();
+  watchers.forEach(function(watcher){
+
+    watcher = watcher.trim();
+
+    if (!watcher) {
+      return true;
+    }
+
+    var type = isSlack(watcher) ? "slack" : "email";
+
+    config.tasks[task].notify[type] = config.tasks[task].notify[type].filter(function(w){
+      return w.toLowerCase() !== watcher.toLowerCase();
+    });
+
   });
 
-  saveConfig("Removed " + watcher + " from receiving " + task + " notifications.");
+  saveConfig("Removed " + watchers.join(", ") + " from receiving " + task + " notifications.");
 
 }
 
