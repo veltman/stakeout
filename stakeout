@@ -89,6 +89,8 @@ function run(task) {
       current,
       firstRun;
 
+  console.log("running",task);
+
   if (!config.tasks[task]) {
     quit("Task " + task + " hasn't been created yet.");
   }
@@ -117,29 +119,39 @@ function run(task) {
       quit(err);
     }
 
-    saveValue(task,newValue);
+    console.log("NEW VALUE");
+    console.log(newValue);
+    console.log("NOTIFICATION");
+    console.log(notification);
 
-    // Don't notify on the first run
-    if (notification && !firstRun) {
+    // If the values are deep equal, don't resave or notify
+    if (!_.isEqual(current,newValue)) {
 
-      // Send Slack notifications
-      config.tasks[task].notify.slack.forEach(function(channel){
+      saveValue(task,newValue);
 
-        notifier.slack({
-          channel: channel,
-          text: notification
-        },config.SLACK_TOKEN || process.env.SLACK_TOKEN);
+      // Don't notify on the first run
+      if (notification && !firstRun) {
 
-      });
+        // Send Slack notifications
+        config.tasks[task].notify.slack.forEach(function(channel){
 
-      // Send emails
-      if (config.tasks[task].notify.email.length) {
+          notifier.slack({
+            channel: channel,
+            text: notification
+          },config.SLACK_TOKEN || process.env.SLACK_TOKEN);
 
-        notifier.email({
-          to: config.tasks[task].notify.email,
-          subject: "Data News Bot notification for " + task,
-          body: notification
-        },config.MAILGUN_API_KEY || process.env.MAILGUN_API_KEY);
+        });
+
+        // Send emails
+        if (config.tasks[task].notify.email.length) {
+
+          notifier.email({
+            to: config.tasks[task].notify.email,
+            subject: "Data News Bot notification for " + task,
+            body: notification
+          },config.MAILGUN_API_KEY || process.env.MAILGUN_API_KEY);
+
+        }
 
       }
 
@@ -311,6 +323,8 @@ function unwatch(task,watcher) {
 // log a message on success
 function saveConfig(msg) {
 
+  console.log(config);
+
   try {
     writeYAML(path.join(stakeoutDir,"config"),config);
   } catch (e) {
@@ -324,6 +338,8 @@ function saveConfig(msg) {
 }
 
 function saveValue(task,val) {
+
+  console.log(val);
 
   try {
     writeJSON(path.join(stakeoutDir,task + ".json"),val);
