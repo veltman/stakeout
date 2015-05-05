@@ -155,7 +155,7 @@ function run(task) {
 
         notifier.email({
           to: config.tasks[task].notify.email,
-          subject: "Data News Bot notification for " + task,
+          subject: "Data News Bot: " + task,
           body: notification
         },config.MAILGUN_API_KEY || process.env.MAILGUN_API_KEY);
 
