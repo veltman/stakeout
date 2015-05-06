@@ -2,11 +2,19 @@
 
 For watching a set of URLs and notifying someone when something has changed.
 
-## Install
+## Step 1. Install Stakeout
 
 ```
 npm install -g stakeout
 ```
+
+## Step 2. Create a task
+
+## Step 3. Add the task to stakeout
+
+## Step 4. Run the task
+
+
 
 ## Commands
 
