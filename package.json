@@ -1,6 +1,6 @@
 {
   "name": "stakeout",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "For watching a set of URLs and notifying someone when something has changed.",
   "main": "stakeout",
   "scripts": {

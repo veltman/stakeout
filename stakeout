@@ -22,14 +22,14 @@ var fs = require("fs"),
     }],
     config;
 
+// Create the ~/.stakeout/ directory if it doesn't already exist
 mkdirp.sync(stakeoutDir);
 
-// Hide the "prompt: " that's on by default
+// Hide the dumb "prompt: " that's on by default
 prompt.message = "";
 prompt.delimiter = "";
 
 // Populate the existing task list
-// TODO: make this YAML instead
 try {
   config = readYAML(path.join(stakeoutDir,"config"));
 } catch(e) {
@@ -40,15 +40,19 @@ try {
 
 // Set up commands
 program.command("list")
-  .description("List existing stakeout tasks")
+  .description("List existing stakeout tasks.")
   .action(list);
 
-program.command("config")
-  .description("Set required variables for email/Slack integration.")
-  .action(doConfig);
+program.command("run <task>")
+  .description("Run a stakeout task once.")
+  .action(run);
+
+program.command("runall")
+  .description("Run all stakeout tasks.")
+  .action(runall);
 
 program.command("add <task>")
-  .description("Create a new stakeout/task, with an optional description.  The task name should only use alphanumeric characters, dashes, and underscores.")
+  .description("Create a new stakeout/task, with an optional description. The task name should probably only use alphanumeric characters, dashes, and underscores.")
   .option("-p, --path <path>", "path to module folder")
   .option("-d, --description <description>", "task description")
   .action(add);
@@ -56,14 +60,6 @@ program.command("add <task>")
 program.command("watch <task> <email/username>")
   .description("Add an email or slack channel/username to be notified for a task.")
   .action(watch);
-
-program.command("clean <task>")
-  .description("Clean out the stored data for a task. This can be useful if stakeout's internal data file has gotten annoyingly large.")
-  .action(clean);
-
-program.command("cleanall")
-  .description("Clean out the stored data for all task. This can be useful if stakeout's internal data files have gotten annoying large.")
-  .action(cleanall);
 
 program.command("remove <task>")
   .description("Remove a task from stakeout.")
@@ -77,13 +73,21 @@ program.command("rename <oldname> <newname>")
   .description("Rename a task.")
   .action(rename);
 
-program.command("run <task>")
-  .description("Run a stakeout task once")
-  .action(run);
+program.command("config")
+  .description("Set required variables for email/Slack integration.")
+  .action(doConfig);
 
-program.command("runall")
-  .description("Run all stakeout tasks")
-  .action(runall);
+program.command("clean <task>")
+  .description("Clean out the stored data for a task.")
+  .action(clean);
+
+program.command("cleanall")
+  .description("Clean out the stored data for all tasks.")
+  .action(cleanall);
+
+program.command("init")
+  .description("Create an empty stakeout directory and config file.")
+  .action(init);
 
 // Catchall for unrecognized commands
 program.command("*")
@@ -100,6 +104,7 @@ if (!program.args.length) {
   quit();
 }
 
+// Run all tasks
 function runall() {
 
   for (task in config.tasks) {
@@ -140,9 +145,10 @@ function run(task) {
   engine(current,function(err,newValue,notification) {
 
     if (err) {
-      quit(err);
+      quit(err); // Unexpected error
     }
 
+    // Save the new value to ~/.stakeout/[task].json
     saveValue(task,newValue);
 
     // Don't notify on the first run
@@ -178,6 +184,7 @@ function run(task) {
 // List all tasks
 function list() {
 
+  // Get a pretty display version of each task
   var entries = _.pairs(config.tasks).map(function(pair){
 
     // Combined recipient list
@@ -199,6 +206,7 @@ function list() {
 
   });
 
+  // Show the list
   if (!entries.length) {
     console.log("No tasks found.");
   } else {
@@ -207,6 +215,7 @@ function list() {
 
 }
 
+// Remove all data files
 function cleanall() {
 
   for (task in config.tasks) {
@@ -215,6 +224,7 @@ function cleanall() {
 
 }
 
+// Remove data file for a task
 function clean(task) {
 
   if (!config.tasks[task]) {
@@ -225,7 +235,7 @@ function clean(task) {
     fs.unlinkSync(path.join(stakeoutDir,task+".json"));
   } catch (e) {
     if (e.code !== "ENOENT") {
-      quit(e);
+      quit(e); // Unexpected error
     }
   }
 
@@ -233,6 +243,7 @@ function clean(task) {
 
 }
 
+// Prompt for config variables
 function doConfig() {
 
   prompt.start();
@@ -242,6 +253,7 @@ function doConfig() {
       quit(err);
     }
 
+    // Update config with values supplied by user
     configurable.forEach(function(option){
       if (results[option.name]) {
         config[option.name] = results[option.name];
@@ -269,9 +281,10 @@ function add(task,options) {
   }
 
   if (!options.path) {
-    quit("The --path option is required when adding a new task");
+    quit("The --path or -p option is required when adding a new task");
   }
 
+  // Set up an empty entry for the new task
   config.tasks[task] = {
     notify: {
       email: [],
@@ -297,12 +310,11 @@ function remove(task) {
 
   delete config.tasks[task];
 
-  //TODO: also delete the log file
   try {
     fs.unlinkSync(path.join(stakeoutDir,task+".json"));
   } catch (e) {
     if (e.code !== "ENOENT") {
-      quit(e);
+      quit(e); // Unexpected error
     }
   }
 
@@ -317,6 +329,7 @@ function rename(oldTask,newTask) {
     quit("Task " + oldTask + " not found.");
   }
 
+  // Make sure the new name isn't in use
   if (taskExists(newTask,true)) {
     quit("Task " + newTask + " already exists.");
   }
@@ -330,7 +343,7 @@ function rename(oldTask,newTask) {
     fs.renameSync(path.join(stakeoutDir,oldTask+".json"),path.join(stakeoutDir,newTask+".json"));
   } catch (e) {
     if (e.code !== "ENOENT") {
-      quit(e);
+      quit(e); // Unexpected error
     }
   }
 
@@ -350,8 +363,10 @@ function watch(task,watchers) {
     program.help();
   }
 
+  // Split on commas
   watchers = watchers.split(",");
 
+  // Add each watcher to the appropriate list
   watchers.forEach(function(watcher){
 
     watcher = watcher.trim();
@@ -382,8 +397,10 @@ function unwatch(task,watchers) {
     program.help();
   }
 
+  // Split on commas
   watchers = watchers.split(",");
 
+  // Remove each watcher from the appropriate list
   watchers.forEach(function(watcher){
 
     watcher = watcher.trim();
@@ -404,6 +421,17 @@ function unwatch(task,watchers) {
 
 }
 
+// Initialize an empty ~/.stakeout/config file
+function init() {
+  fs.stat(path.join(stakeoutDir,"config"),function(err,stat){
+    if (err) {
+      saveConfig("Stakeout initialized.\nData is stored in: ~/.stakeout/\nConfiguration file is located at: ~/.stakeout/config");
+    } else {
+      console.log("Stakeout configuration file already exists.");
+    }
+  });
+}
+
 // Save the task file back out
 // doing this sync in case there are multiple tasks running at once
 // probably a bad idea. TODO: fix this
@@ -422,6 +450,7 @@ function saveConfig(msg) {
 
 }
 
+// Save a new data file for a particular task
 function saveValue(task,val) {
 
   try {
@@ -453,7 +482,6 @@ function writeJSON(filename,data) {
   fs.writeFileSync(filename,JSON.stringify(data,null,"  "));
 }
 
-// Load yaml config
 function readYAML(filename) {
   return yaml.safeLoad(read(filename));
 }
