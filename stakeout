@@ -73,7 +73,7 @@ program.command("unwatch <task> <email/username>")
   .description("Stop notifying an email or slack channel/username for a task.")
   .action(unwatch);
 
-program.command("rename <old task name> <new task name>")
+program.command("rename <oldname> <newname>")
   .description("Rename a task.")
   .action(rename);
 
