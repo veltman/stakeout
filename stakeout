@@ -57,6 +57,14 @@ program.command("watch <task> <email/username>")
   .description("Add an email or slack channel/username to be notified for a task.")
   .action(watch);
 
+program.command("clean <task>")
+  .description("Clean out the stored data for a task. This can be useful if stakeout's internal data file has gotten annoyingly large.")
+  .action(clean);
+
+program.command("cleanall")
+  .description("Clean out the stored data for all task. This can be useful if stakeout's internal data files have gotten annoying large.")
+  .action(cleanall);
+
 program.command("remove <task>")
   .description("Remove a task from stakeout.")
   .action(remove);
@@ -196,6 +204,32 @@ function list() {
   } else {
     console.log("\n" + entries.join("\n\n") + "\n");
   }
+
+}
+
+function cleanall() {
+
+  for (task in config.tasks) {
+    clean(task);
+  }
+
+}
+
+function clean(task) {
+
+  if (!config.tasks[task]) {
+    quit("Task " + task + " hasn't been created yet.");
+  }
+
+  try {
+    fs.unlinkSync(path.join(stakeoutDir,task+".json"));
+  } catch (e) {
+    if (e.code !== "ENOENT") {
+      quit(e);
+    }
+  }
+
+  console.log("Cleaned data for task " + task + ".");
 
 }
 
