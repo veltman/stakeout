@@ -14,28 +14,57 @@ var fs = require("fs"),
     configurable = [
     {
       name: "SLACK_TOKEN",
-      message: "Enter your Slack webhook token:"
+      message: "Your Slack webhook token:"
     },
     {
       name: "MAILGUN_API_KEY",
-      message: "Enter your Mailgun API key:"
+      message: "Your Mailgun API key:"
+    },
+    {
+      name: "EMAIL_FROM",
+      message: "The \"from\" email address stakeout should use (e.g. 'Notorious B.O.T. <bot@wnyc.org>':"
+    },
+    {
+      name: "EMAIL_SUBJECT_PREFIX",
+      message: "The email subject prefix to use (e.g. 'Notification for: '):"
+    },
+    {
+      name: "SLACK_NAME",
+      message: "The Slack display name Stakeout should use (e.g. 'Notorious B.O.T.'):"
+    },
+    {
+      name: "SLACK_ICON",
+      message: "The emoji Stakeout should use as its icon in Slack (e.g. ':loudspeaker:'):"
+    },
+    {
+      name: "SLACK_SUBDOMAIN",
+      message: "Your organization's Slack subdomain (http://[subdomain].slack.com/):"
     }],
     config;
-
-// Create the ~/.stakeout/ directory if it doesn't already exist
-mkdirp.sync(stakeoutDir);
 
 // Hide the dumb "prompt: " that's on by default
 prompt.message = "";
 prompt.delimiter = "";
 
+// Create the ~/.stakeout/ directory if it doesn't already exist
+mkdirp.sync(stakeoutDir);
+
 // Populate the existing task list
 try {
   config = readYAML(path.join(stakeoutDir,"config"));
 } catch(e) {
+
+  configurable.forEach(function(param){
+    config[param] = "";
+  });
+
+  // Initialize a blank config file
   config = {
     tasks: {}
   };
+
+  saveConfig();
+
 }
 
 // Set up commands
@@ -159,8 +188,11 @@ function run(task) {
 
         notifier.slack({
           channel: channel,
-          text: notification
-        },config.SLACK_TOKEN || process.env.SLACK_TOKEN);
+          username: config.SLACK_NAME,
+          icon: config.SLACK_ICON,
+          text: notification,
+          subdomain: config.SLACK_SUBDOMAIN
+        },config.SLACK_TOKEN);
 
       });
 
@@ -169,9 +201,10 @@ function run(task) {
 
         notifier.email({
           to: config.tasks[task].notify.email,
-          subject: "Data News Bot: " + task,
-          body: notification
-        },config.MAILGUN_API_KEY || process.env.MAILGUN_API_KEY);
+          subject: config.EMAIL_SUBJECT_PREFIX + task,
+          body: notification,
+          from: config.EMAIL_FROM
+        },config.MAILGUN_API_KEY);
 
       }
 
