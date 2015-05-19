@@ -54,14 +54,14 @@ try {
   config = readYAML(path.join(stakeoutDir,"config"));
 } catch(e) {
 
-  configurable.forEach(function(param){
-    config[param] = "";
-  });
-
   // Initialize a blank config file
   config = {
     tasks: {}
   };
+
+  configurable.forEach(function(param){
+    config[param] = "";
+  });
 
   saveConfig();
 
