@@ -13,8 +13,8 @@ var fs = require("fs"),
     stakeoutDir = home(".stakeout"),
     configurable = [
     {
-      name: "SLACK_TOKEN",
-      message: "Your Slack webhook token:"
+      name: "SLACK_WEBHOOK_URL",
+      message: "Your Slack webhook url:"
     },
     {
       name: "MAILGUN_API_KEY",
@@ -35,10 +35,6 @@ var fs = require("fs"),
     {
       name: "SLACK_ICON",
       message: "The emoji Stakeout should use as its icon in Slack (e.g. ':loudspeaker:'):"
-    },
-    {
-      name: "SLACK_SUBDOMAIN",
-      message: "Your organization's Slack subdomain (http://[subdomain].slack.com/):"
     }],
     config;
 
@@ -136,7 +132,7 @@ if (!program.args.length) {
 // Run all tasks
 function runall() {
 
-  for (task in config.tasks) {
+  for (var task in config.tasks) {
     run(task);
   }
 
@@ -192,7 +188,7 @@ function run(task) {
           icon: config.SLACK_ICON,
           text: notification,
           subdomain: config.SLACK_SUBDOMAIN
-        },config.SLACK_TOKEN);
+      },config.SLACK_WEBHOOK_URL);
 
       });
 
