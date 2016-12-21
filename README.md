@@ -94,7 +94,7 @@ Watchers can be email addresses, Slack usernames, or Slack channels.
 stakeout watch task-name jane@doe.com,#notifications,@john
 ```
 
-## Step 4. Create a cronjob for the task
+## Step 5. Create a cronjob for the task
 
 To check every minute:
 
@@ -180,7 +180,7 @@ stakeout cleanall
 
 Config for bots is stored as YAML in `~/.stakeout/config`.  You can edit it manually there.
 
-To send email notifications, you need to set a few options, especially a Mailgun API key.  To send Slack notifications, you need to set a few options, especially a Slack incoming webhook token.  You can add these all using `stakeout config` or edit them manually in `~/.stakeout/config`:
+To send email notifications, you need to set a few options, especially a Mailgun API key.  To send Slack notifications, you need to set a few options, especially a Slack incoming webhook URL.  You can add these all using `stakeout config` or edit them manually in `~/.stakeout/config`:
 
 ```
 SLACK_TOKEN: abc123
@@ -189,7 +189,7 @@ EMAIL_FROM: 'Data News Team <bots@wnyc.org>'
 EMAIL_SUBJECT_PREFIX: 'Data News Bot: '
 SLACK_NAME: Data News Bot
 SLACK_ICON: ':robot:'
-SLACK_SUBDOMAIN: datanews
+SLACK_WEBHOOK_URL: 'https://hooks.slack.com/services/ABC123...'
 tasks:
   task-name:
     ...
