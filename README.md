@@ -88,11 +88,12 @@ stakeout add task-name -p /absolute/path/to/module
 
 ## Step 4. Add some people to be notified
 
-Watchers can be email addresses, Slack usernames, or Slack channels.
+Watchers can be email addresses, Slack usernames or Slack channels. Preface Slack usernames with `@`. Channel names start with `#`, which is interpreted on the command line as the start of a comment. So either enclose the whole channel name in quotes or escape the `#` using `\#`:
 
 ```
-stakeout watch task-name jane@doe.com,#notifications,@john
+stakeout watch task-name jane@doe.com,@john,'#notifications',\#botnotes
 ```
+
 
 ## Step 5. Create a cronjob for the task
 
