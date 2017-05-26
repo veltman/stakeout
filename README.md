@@ -195,7 +195,7 @@ tasks:
     ...
 ```
 
-The most recent value returned by a given task will be saved in `~/.stakeout/task-name.json`.
+The most recent value returned by a given task will be saved in `~/.stakeout/task-name.json`. Notifiations aren't sent the first time the bot runs because nothing has yet changed.
 
 ## Why?
 
