@@ -184,7 +184,6 @@ Config for bots is stored as YAML in `~/.stakeout/config`.  You can edit it manu
 To send email notifications, you need to set a few options, especially a Mailgun API key.  To send Slack notifications, you need to set a few options, especially a Slack incoming webhook URL.  You can add these all using `stakeout config` or edit them manually in `~/.stakeout/config`:
 
 ```
-SLACK_TOKEN: abc123
 MAILGUN_API_KEY: def456
 EMAIL_FROM: 'Data News Team <bots@wnyc.org>'
 EMAIL_SUBJECT_PREFIX: 'Data News Bot: '
