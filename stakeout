@@ -153,7 +153,7 @@ function run(task) {
   try {
     engine = require(config.tasks[task].path);
   } catch(e) {
-    quit(config.tasks[task].path + " module not found.");
+    quit("Error loading task file: " + config.tasks[task].path, e);
   }
 
   // Get the current value
@@ -546,10 +546,10 @@ function taskExists(task,caseInsensitive) {
 }
 
 // Error out without a throw-style stack trace
-function quit(msg) {
+function quit(msg, e) {
 
   if (msg) {
-    console.warn(msg);
+    console.warn(msg, e || "");
   }
 
   process.exit(1);
